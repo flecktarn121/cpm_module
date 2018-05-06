@@ -1,0 +1,25 @@
+package hj.lib;
+
+public abstract class MapReduce extends hj.lang.MapReduce.MapReduceBase {
+	public MapReduce(int numMapTasks, int numReduceTasks) {
+		super(numMapTasks, numReduceTasks);
+	}
+	public void run() {
+		finish {
+			hj.lang.MapReduce.MapTask t;
+			int mapTaskID = 0;
+			while ( (t=splitter()) != null) {
+				final hj.lang.MapReduce.MapTask tt = t;
+				tt.setID(mapTaskID++);
+				async {tt.map();};
+			}
+		}
+		finish {
+			for (int i=0; i<_numReduceTasks; i++) {
+				final int ii = i;
+				async{reduce(ii);};
+			}
+		}
+		merge();
+	}	
+}
