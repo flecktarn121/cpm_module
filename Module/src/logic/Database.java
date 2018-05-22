@@ -2,16 +2,22 @@ package logic;
 
 import java.io.FileNotFoundException;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Random;
-
-import javax.swing.JComboBox;
+import java.util.concurrent.Callable;
+import java.util.concurrent.Executors;
+import java.util.stream.Stream;
 
 public class Database {
 	public final static String NO_FILTER_KEYWORD = "All";
 	List<Package> packages;
 	List<Accommodation> accommodations;
 	List<ThemePark> themeParks;
+	HashMap<String, Package> Packages;
+	HashMap<String, Accommodation> Accomodations;
+	HashMap<String, ThemePark> parks;
+	HashMap<String, Ticket> Tickets;
 	List<Ticket> tickets;
 	List<String> countries;
 	List<String> cities;
@@ -24,6 +30,10 @@ public class Database {
 		tickets = new ArrayList<Ticket>();
 		countries = new ArrayList<String>();
 		cities = new ArrayList<String>();
+		Packages = new HashMap<String, Package>();
+		Accomodations = new HashMap<String, Accommodation>();
+		Tickets = new HashMap<String, Ticket>() ;
+		parks = new HashMap<String, ThemePark>();
 	}
 
 	public List<ThemePark> getParks() {
@@ -31,7 +41,7 @@ public class Database {
 	}
 
 	public List<Package> getPackages() {
-		return packages;
+		return new ArrayList<Package>(Packages.values());
 	}
 
 	public List<Accommodation> getAccommodations() {
@@ -49,35 +59,44 @@ public class Database {
 	public void save(String filename, String text) {
 		List<String> lines = new ArrayList<String>();
 		lines.add(text);
-		fileUtility.saveToFile(filename,lines );
+		fileUtility.saveToFile(filename, lines);
 	}
 
 	public void loadDatabase(String packages, String accomodations, String themeParks, String tickets)
 			throws FileNotFoundException {
-		List<String> listParks = fileUtility.loadFile(themeParks);
-		loadParks(listParks);
-		loadAccommodations(fileUtility.loadFile(accomodations));
-		loadPackages(fileUtility.loadFile(packages));
-		loadTickets(fileUtility.loadFile(tickets));
-	}
-
-	private void loadTickets(List<String> listTIckets) {
-		List<Ticket> tickets = new ArrayList<Ticket>(listTIckets.size());
-		String data[];
-		for (String line : listTIckets) {
-			data = line.split("@");
-			tickets.add(new Ticket(data[0], data[1], Double.parseDouble(data[2]), Double.parseDouble(data[3])));
+		List<Callable<Object>> methods = new ArrayList<Callable<Object>>();
+		methods.add(() -> loadParks(fileUtility.loadFile(themeParks)));
+		methods.add(() -> loadAccommodations(fileUtility.loadFile(accomodations)));
+		methods.add(() -> loadPackages(fileUtility.loadFile(packages)));
+		methods.add(() -> loadTickets(fileUtility.loadFile(tickets)));
+		try {
+			Executors.newWorkStealingPool().invokeAll(methods);
+		} catch (InterruptedException e) {
+			throw new RuntimeException(e.getMessage());
 		}
+	}
 
+	private List<Ticket> loadTickets(List<String> listTIckets) {
+		List<Ticket> tickets = new ArrayList<Ticket>(listTIckets.size());
+		Stream<String> stream = listTIckets.parallelStream();
+		stream.forEach((line) -> {
+			String data[];
+			Ticket ticket;
+			data = line.split("@");
+			ticket = new Ticket(data[0], data[1], Double.parseDouble(data[2]), Double.parseDouble(data[3]));
+			Tickets.put(ticket.getCode(), ticket);
+			tickets.add(new Ticket(data[0], data[1], Double.parseDouble(data[2]), Double.parseDouble(data[3])));
+		});
 		this.tickets.addAll(tickets);
+		return tickets;
 
 	}
 
-	private void loadPackages(List<String> listPacks) {
+	private List<Package> loadPackages(List<String> listPacks) {
 		List<Package> packs = new ArrayList<Package>(listPacks.size());
-		String[] data;
-		for (String line : listPacks) {
-			data = line.split("@");
+		Stream<String> stream = listPacks.parallelStream();
+		stream.forEach((line) -> {
+			String[] data = line.split("@");
 			String code = data[0];
 			String name = data[1];
 			String parkCode = data[2];
@@ -87,40 +106,50 @@ public class Database {
 			int stars = Integer.parseInt(data[6]);
 			Package pack = new Package(code, name, parkCode, accommodationCode, adultPrice, childrenPrice, stars);
 			packs.add(pack);
-		}
+			Packages.put(code, pack);
+		});
 
 		packages.addAll(packs);
+		return packs;
 
 	}
 
-	private void loadParks(List<String> listParks) {
+	private List<ThemePark> loadParks(List<String> listParks) {
 		List<ThemePark> parks = new ArrayList<ThemePark>(listParks.size());
-		String[] data;
-		for (String line : listParks) {
+		Stream<String> stream = listParks.parallelStream();
+		stream.forEach((line) -> {
+			String[] data;
 			data = line.split("@");
+			ThemePark park = new ThemePark(data[0], data[1], data[2], data[3], data[4]);
 			parks.add(new ThemePark(data[0], data[1], data[2], data[3], data[4]));
+			this.parks.put(park.getCode(), park);
 			if (!countries.contains(data[2])) {
 				countries.add(data[2]);
 			}
 			if (!cities.contains(data[3])) {
 				cities.add(data[3]);
 			}
-		}
+			this.parks.put(park.getCode(), park);
+		});
 		Random chooser = new Random(System.currentTimeMillis());
-		parks.get(chooser.nextInt(parks.size())).setDiscount(true);
+		int theChosenOne = chooser.nextInt(parks.size());
+		ThemePark thePark = parks.get(theChosenOne);
+		thePark.setDiscount(true);
 		themeParks.addAll(parks);
+		return parks;
 
 	}
 
-	private void loadAccommodations(List<String> listAccommodations) {
+	private List<Accommodation> loadAccommodations(List<String> listAccommodations) {
 		List<Accommodation> accommodations = new ArrayList<Accommodation>(listAccommodations.size());
-
-		String[] data;
-		TypeOfAccomodation type = null;
-		double category;
-		int capacity;
-		double price;
-		for (String line : listAccommodations) {
+		Stream<String> stream = listAccommodations.parallelStream();
+		stream.forEach((line) -> {
+			String[] data;
+			Accommodation acc;
+			TypeOfAccomodation type = null;
+			double category;
+			int capacity;
+			double price;
 			data = line.split("@");
 			switch (data[1]) {
 			case "AP":
@@ -137,33 +166,22 @@ public class Database {
 			category = Double.parseDouble(data[2]);
 			capacity = Integer.parseInt(data[5]);
 			price = Double.parseDouble(data[6]);
-
+			acc = new Accommodation(data[0], type, category, data[3], data[4], capacity, price);
+			Accomodations.put(acc.getCode(), acc);
 			accommodations.add(new Accommodation(data[0], type, category, data[3], data[4], capacity, price));
-		}
+		});
 		this.accommodations.addAll(accommodations);
+		return accommodations;
 	}
 
 	public ThemePark getParkByCode(String code) {
 		ThemePark thePark = null;
-		for (ThemePark park : themeParks) {
-			if (park.getCode().equals(code)) {
-				thePark = park;
-				break;
-			}
-		}
-
+		thePark = parks.get(code);
 		return thePark;
 	}
 
 	public Accommodation getAccommodationByCode(String code) {
-		Accommodation acc = null;
-		for (Accommodation place : accommodations) {
-			if (place.getCode().equals(code)) {
-				acc = place;
-				break;
-			}
-		}
-
+		Accommodation acc = Accomodations.get(code);
 		return acc;
 	}
 
@@ -376,11 +394,11 @@ public class Database {
 
 	public List<ThemePark> searchPark(String text) {
 		List<ThemePark> results = new ArrayList<ThemePark>();
-		for (ThemePark park : themeParks) {
-			if (park.getName().toLowerCase().equals(text.toLowerCase())) {
+		parks.values().parallelStream().forEach((park) -> {
+			if (park.getName().toLowerCase().equals(text.toLowerCase()))
 				results.add(park);
-			}
-		}
+
+		});
 		return results;
 	}
 
@@ -392,6 +410,11 @@ public class Database {
 			}
 		}
 		return results;
+	}
+
+	public Package getPackByCode(String selectedCode) {
+		Package pack = Packages.get(selectedCode);
+		return pack;
 	}
 
 }

@@ -27,7 +27,6 @@ import javax.swing.JPanel;
 import javax.swing.JScrollPane;
 import javax.swing.JTextArea;
 import javax.swing.JTextField;
-import javax.swing.SwingConstants;
 import javax.swing.border.EmptyBorder;
 import javax.swing.event.ListDataEvent;
 import javax.swing.event.ListDataListener;
@@ -57,15 +56,11 @@ public class MainWindow extends JFrame {
 	private static final int ICON_WIDTH = 1000;
 
 	/**
-	 * TODO:
-	 * - Fix the calculations for final prices
-	 * - Change the name of the bill
-	 * - Check an exception that is eventually thrown
-	 * - Extend the helpset
-	 * - Add the option to exit and retart the application to the menu
-	 * - Try to iniciate the third dialogs with the current time.
-	 * - Fix the god damm discount.
-	 * - Be carefull with the accommodation capacity
+	 * TODO: - Fix the calculations for final prices - Change the name of the bill -
+	 * Check an exception that is eventually thrown - Extend the helpset - Add the
+	 * option to exit and retart the application to the menu - Try to iniciate the
+	 * third dialogs with the current time. - Fix the god damm discount. - Be
+	 * carefull with the accommodation capacity
 	 */
 	private static final long serialVersionUID = 1L;
 
@@ -76,7 +71,6 @@ public class MainWindow extends JFrame {
 	private JPanel pnCenter;
 	private JPanel pnButtons;
 	private JButton btnConfirm;
-	private JButton btnRestart;
 	private JPanel pnSelection;
 	private JButton btnAccommodations;
 	private JButton btnPackages;
@@ -107,7 +101,7 @@ public class MainWindow extends JFrame {
 	private JDialog parkCatalog;
 	MainWindow mw = this;
 	private JScrollPane spCart;
-	JList cart;
+	JList<String> cart;
 	private DefaultListModel<String> cartModel = null;
 	private JDialog packageCalog;
 	private JPanel pnInformation;
@@ -137,10 +131,12 @@ public class MainWindow extends JFrame {
 	private JLabel lblSuccess;
 	private JPanel pnFinalIcon;
 	private JLabel lblFinalIcon;
+	private JMenu mnOrder;
+	private JMenuItem mntmRestart;
 
-	//TODO: 
+	// TODO:
 	//
-	
+
 	/**
 	 * Launch the application.
 	 */
@@ -180,7 +176,7 @@ public class MainWindow extends JFrame {
 		pnMain.add(getPnHome(), "pnHome");
 		pnMain.add(getPnData(), "pnData");
 		pnMain.add(getPnConfirmation(), "pnConfirmation");
-		cargaAyuda();
+		loadHelp();
 		try {
 			db.loadDatabase("src/file/paquetes.dat", "src/file/alojamientos.dat", "src/file/tematicos.dat",
 					"src/file/entradas.dat");
@@ -244,7 +240,6 @@ public class MainWindow extends JFrame {
 			FlowLayout flowLayout = (FlowLayout) pnButtons.getLayout();
 			flowLayout.setAlignment(FlowLayout.RIGHT);
 			pnButtons.add(getBtnConfirm());
-			pnButtons.add(getBtnRestart());
 		}
 		return pnButtons;
 	}
@@ -264,29 +259,17 @@ public class MainWindow extends JFrame {
 		return btnConfirm;
 	}
 
-	private JButton getBtnRestart() {
-		if (btnRestart == null) {
-			btnRestart = new JButton("Restart");
-			btnRestart.setMnemonic('s');
-			btnRestart.setToolTipText("Restart the application.");
-			btnRestart.addActionListener(new ActionListener() {
-				public void actionPerformed(ActionEvent arg0) {
-					// TODO: the whole application needs to be restarted
-					((CardLayout) pnMain.getLayout()).show(pnMain, "pnPresentation");
-					shoppingCart.restart();
-					cartModel.removeAllElements();
-					txtInfo.setText("");
-					getTxtName().setText("");
-					getTxtSurname().setText("");
-					getTxtNIF().setText("");
-					getTxtBill().setText("");
-					btnConfirmData.setEnabled(false);
-					getBtnConfirm().setEnabled(false);
-
-				}
-			});
-		}
-		return btnRestart;
+	private void restart() {
+		((CardLayout) pnMain.getLayout()).show(pnMain, "pnPresentation");
+		shoppingCart.restart();
+		cartModel.removeAllElements();
+		txtInfo.setText("");
+		getTxtName().setText("");
+		getTxtSurname().setText("");
+		getTxtNIF().setText("");
+		getTxtBill().setText("");
+		btnConfirmData.setEnabled(false);
+		getBtnConfirm().setEnabled(false);
 	}
 
 	private JPanel getPnSelection() {
@@ -571,11 +554,11 @@ public class MainWindow extends JFrame {
 		return spCart;
 	}
 
-	private JList getCart() {
+	private JList<String> getCart() {
 		if (cart == null) {
 			cartModel = new DefaultListModel<String>();
 			cartModel.addListDataListener(new ConfirmationListener());
-			cart = new JList(cartModel);
+			cart = new JList<String>(cartModel);
 			cart.addListSelectionListener(new ListSelectionListener() {
 				public void valueChanged(ListSelectionEvent arg0) {
 					if (cart.getSelectedValue() != null) {
@@ -598,8 +581,7 @@ public class MainWindow extends JFrame {
 	void addAcc(Accommodation acc, int numberOfAdults, int numberOfChildren, String initialDate, int numberOfDays,
 			int numBerOfReservations) throws WrongInputException {
 		for (int i = 0; i < numBerOfReservations; i++) {
-			Accommodation newAcc = new Accommodation(acc.getCode(), acc.getType(), acc.getCategory(), acc.getName(),
-					acc.getThemeParkCode(), acc.getCapacity(), acc.getPrice());
+			Accommodation newAcc = acc.clone();
 			shoppingCart.addAccommodation(newAcc, numberOfAdults, numberOfChildren, initialDate, numberOfDays);
 			cartModel.addElement(newAcc.getShoppingName());
 		}
@@ -610,9 +592,7 @@ public class MainWindow extends JFrame {
 			int numberOfReservations) throws WrongInputException {
 		Ticket ticket = db.getTicketByCode(park.getCode());
 		for (int i = 0; i < numberOfReservations; i++) {
-
-			Ticket newTicket = new Ticket(ticket.getCode(), ticket.getParkCode(), ticket.getAdultPrice(),
-					ticket.getChildrenPrice());
+			Ticket newTicket = ticket.clone();
 			shoppingCart.addTicket(newTicket, numberOfChildren, numberOfAdults, date, numberOfDays);
 			cartModel.addElement(newTicket.getShoppingName());
 		}
@@ -622,8 +602,7 @@ public class MainWindow extends JFrame {
 	public void addPack(Package pack, int numberOfAdults, int numberOfChildren, String date, int numberOfDays,
 			int numberOfReservations) throws WrongInputException {
 		for (int i = 0; i < numberOfReservations; i++) {
-			Package newPack = new Package(pack.getCode(), pack.getName(), pack.getParkCode(),
-					pack.getAccommodationCode(), pack.getDays(), pack.getAdultPrice(), pack.getChildrenPrice());
+			Package newPack = pack.clone();
 			shoppingCart.addPackage(newPack, numberOfChildren, numberOfAdults, date, numberOfDays);
 			cartModel.addElement(newPack.getShoppingName());
 		}
@@ -868,7 +847,7 @@ public class MainWindow extends JFrame {
 		return lblIcon;
 	}
 
-	private void cargaAyuda() {
+	private void loadHelp() {
 
 		URL hsURL;
 		HelpSet hs;
@@ -896,6 +875,7 @@ public class MainWindow extends JFrame {
 	private JMenuBar getMenuBar_1() {
 		if (menuBar == null) {
 			menuBar = new JMenuBar();
+			menuBar.add(getMnOrder());
 			menuBar.add(getMnHelp());
 		}
 		return menuBar;
@@ -932,8 +912,8 @@ public class MainWindow extends JFrame {
 			mntmAbout = new JMenuItem("About");
 			mntmAbout.addActionListener(new ActionListener() {
 				public void actionPerformed(ActionEvent arg0) {
-					JOptionPane.showMessageDialog(mw,
-							"Application developed by Ã�ngel GarcÃ­a MenÃ©ndez. " + "\n" + "Contact: uo258654@uniovi.es");
+					JOptionPane.showMessageDialog(mw, "Application developed by Ã�ngel GarcÃ­a MenÃ©ndez. " + "\n"
+							+ "Contact: uo258654@uniovi.es");
 				}
 			});
 			mntmAbout.setMnemonic('b');
@@ -980,5 +960,27 @@ public class MainWindow extends JFrame {
 			setAdaptedImage(lblFinalIcon, "/img/logo.png");
 		}
 		return lblFinalIcon;
+	}
+
+	private JMenu getMnOrder() {
+		if (mnOrder == null) {
+			mnOrder = new JMenu("Order");
+			mnOrder.setMnemonic('O');
+			mnOrder.add(getMntmRestart());
+		}
+		return mnOrder;
+	}
+
+	private JMenuItem getMntmRestart() {
+		if (mntmRestart == null) {
+			mntmRestart = new JMenuItem("Restart");
+			mntmRestart.setMnemonic('s');
+			mntmRestart.addActionListener(new ActionListener() {
+				public void actionPerformed(ActionEvent arg0) {
+					restart();
+				}
+			});
+		}
+		return mntmRestart;
 	}
 }

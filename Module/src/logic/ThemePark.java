@@ -1,6 +1,6 @@
 package logic;
 
-public class ThemePark {
+public class ThemePark implements Cloneable{
 
 	private final static double DISCOUNT = 20;
 
@@ -22,7 +22,7 @@ public class ThemePark {
 		image = "/img/" + getCode() + ".jpg";
 	}
 
-	void setDiscount(boolean b) {
+	void setDiscount(boolean discount) {
 		this.discount = discount;
 
 	}
@@ -122,6 +122,12 @@ public class ThemePark {
 	@Override
 	public String toString() {
 		return this.code + "/" + this.name + "/" + this.city + "/" + this.country + this.description;
+	}
+	
+	@Override
+	public ThemePark clone() {
+		ThemePark park = new ThemePark(getCode(), getName(), getCountry(), getCity(), getCode());
+		return park;
 	}
 
 }

@@ -5,54 +5,46 @@ import java.awt.Color;
 import java.awt.Dimension;
 import java.awt.FlowLayout;
 import java.awt.Font;
-import java.awt.GridLayout;
 import java.awt.Image;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.awt.event.FocusAdapter;
 import java.awt.event.FocusEvent;
-import java.util.List;
-
+import java.sql.Date;
 import javax.swing.BoxLayout;
 import javax.swing.DefaultComboBoxModel;
 import javax.swing.ImageIcon;
 import javax.swing.JButton;
-import javax.swing.JCheckBox;
 import javax.swing.JComboBox;
 import javax.swing.JDialog;
 import javax.swing.JLabel;
-import javax.swing.JList;
 import javax.swing.JOptionPane;
 import javax.swing.JPanel;
 import javax.swing.JScrollPane;
 import javax.swing.JSpinner;
 import javax.swing.JTextArea;
-import javax.swing.JTextField;
 import javax.swing.SpinnerNumberModel;
 import javax.swing.SwingConstants;
-import javax.swing.border.EmptyBorder;
 import javax.swing.border.LineBorder;
 import javax.swing.border.TitledBorder;
-import javax.swing.table.DefaultTableModel;
-
-import logic.Accommodation;
 import logic.Package;
 import logic.WrongInputException;
 
 public class PackageProcessor extends JDialog {
+	/**
+	 * 
+	 */
+	private static final long serialVersionUID = 1L;
 	private JPanel pnNorth;
 	private JPanel pnCenter;
 	private JPanel pnSouth;
 	private JPanel pnEast;
 	private JLabel lblTitle;
-	private JLabel lblSearch;
-	private JTextField txtSearch;
 	private JPanel pnInfo;
 	private JButton btnBack;
 	private MainWindow mW;
 	private JDialog aC = this;
 	private JPanel pnType;
-	private NotEditableModel accommodationsModel;
 	private Package pack;
 	private JPanel pnAdults;
 	private JLabel lblAdults;
@@ -63,13 +55,13 @@ public class PackageProcessor extends JDialog {
 	private JPanel pnDate;
 	private JPanel pnDays;
 	private JLabel lblDays;
-	private JComboBox cbDays;
+	private JComboBox<String> cbDays;
 	private JPanel pnMonth;
 	private JLabel lblMonth;
-	private JComboBox cbMonth;
+	private JComboBox<String> cbMonth;
 	private JPanel pnYear;
 	private JLabel lblYear;
-	private JComboBox cbYear;
+	private JComboBox<Integer> cbYear;
 	private JPanel pnDetails;
 	private JPanel pnDaysOfStay;
 	private JLabel lblDaysOfStay;
@@ -155,37 +147,6 @@ public class PackageProcessor extends JDialog {
 			lblTitle.setHorizontalAlignment(SwingConstants.LEFT);
 		}
 		return lblTitle;
-	}
-
-	private JLabel getLblSearch() {
-		if (lblSearch == null) {
-			lblSearch = new JLabel("Search:");
-			lblSearch.setDisplayedMnemonic('S');
-			lblSearch.setLabelFor(getTxtSearch());
-		}
-		return lblSearch;
-	}
-
-	private JTextField getTxtSearch() {
-		if (txtSearch == null) {
-			txtSearch = new JTextField();
-			txtSearch.setColumns(10);
-		}
-		return txtSearch;
-	}
-
-	private void addRows(List<Accommodation> accommodations) {
-		for (Accommodation acc : accommodations) {
-			String name = acc.getName();
-			String type = acc.getType().toString().toLowerCase();
-			String category = new Integer((int) acc.getCategory()).toString();
-			String park = mW.db.getParkByCode(acc.getThemeParkCode()).getName();
-			String capacity = String.valueOf(acc.getCapacity());
-			String price = String.valueOf(acc.getPrice());
-			String[] accData = { name, type, category, park, capacity, price };
-			accommodationsModel.addRow(accData);
-		}
-
 	}
 
 	private JPanel getPnInfo() {
@@ -330,9 +291,9 @@ public class PackageProcessor extends JDialog {
 		return lblDays;
 	}
 
-	private JComboBox getCbDays() {
+	private JComboBox<String> getCbDays() {
 		if (cbDays == null) {
-			cbDays = new JComboBox();
+			cbDays = new JComboBox<String>();
 			cbDays.setToolTipText("Set the days.");
 			getCbMonth();
 			fillCbDays();
@@ -393,6 +354,9 @@ public class PackageProcessor extends JDialog {
 		}
 
 		getCbDays().setSelectedIndex(0);
+		// set current day
+		String[] date = new Date(System.currentTimeMillis()).toString().split("-");
+		getCbDays().setSelectedIndex(Integer.parseInt(date[date.length - 1]));
 	}
 
 	private JPanel getPnMonth() {
@@ -413,13 +377,16 @@ public class PackageProcessor extends JDialog {
 		return lblMonth;
 	}
 
-	private JComboBox getCbMonth() {
+	private JComboBox<String> getCbMonth() {
 		if (cbMonth == null) {
-			cbMonth = new JComboBox();
+			cbMonth = new JComboBox<String>();
 			cbMonth.setToolTipText("Set the month.");
 			cbMonth.setModel(new DefaultComboBoxModel<String>(new String[] { "January", "February", "March", "April",
 					"May", "June", "July", "August", "September", "October", "November", "December" }));
-			cbMonth.setSelectedIndex(0);
+			// set current month
+			String[] date = new Date(System.currentTimeMillis()).toString().split("-");
+			System.out.println(new Date(System.currentTimeMillis()).toString());
+			cbMonth.setSelectedIndex(Integer.parseInt(date[date.length - 2]));
 			cbMonth.addActionListener(new ActionListener() {
 				public void actionPerformed(ActionEvent arg0) {
 					fillCbDays();
@@ -449,9 +416,9 @@ public class PackageProcessor extends JDialog {
 		return lblYear;
 	}
 
-	private JComboBox getCbYear() {
+	private JComboBox<Integer> getCbYear() {
 		if (cbYear == null) {
-			cbYear = new JComboBox();
+			cbYear = new JComboBox<Integer>();
 			cbYear.setToolTipText("Set the year.");
 			for (int i = 2018; i < 2100; i++) {
 				cbYear.addItem(i);

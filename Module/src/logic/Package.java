@@ -1,6 +1,6 @@
 package logic;
 
-public class Package implements Shoppable {
+public class Package implements Shoppable, Cloneable {
 	private String code;
 	private String name;
 	private String accommodationCode;
@@ -207,6 +207,12 @@ public class Package implements Shoppable {
 	public double getFinalPrice() {
 		
 		return ((getChildrenPrice() * getNumberOfChildren()) + (getAdultPrice() * getAdultPrice()));
+	}
+	
+	@Override
+	public Package clone() {
+		Package pack = new Package(getCode(), getName(), getParkCode(), getAccommodationCode(), getDays(), getAdultPrice(), getChildrenPrice());
+		return pack;
 	}
 
 }

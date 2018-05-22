@@ -9,28 +9,24 @@ import java.awt.GridLayout;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.util.List;
-
 import javax.swing.JButton;
 import javax.swing.JComboBox;
 import javax.swing.JDialog;
 import javax.swing.JLabel;
-import javax.swing.JList;
 import javax.swing.JPanel;
 import javax.swing.JScrollPane;
 import javax.swing.JTable;
-import javax.swing.JTextArea;
 import javax.swing.JTextField;
 import javax.swing.ListSelectionModel;
-import javax.swing.SpinnerModel;
 import javax.swing.SwingConstants;
 import javax.swing.border.LineBorder;
 import javax.swing.border.TitledBorder;
 import javax.swing.event.ChangeListener;
-import javax.swing.table.DefaultTableModel;
-
+import javax.swing.event.ListSelectionEvent;
+import javax.swing.event.ListSelectionListener;
 import logic.Accommodation;
+import logic.Database;
 import logic.ThemePark;
-
 import javax.swing.JCheckBox;
 import javax.swing.BoxLayout;
 import javax.swing.DefaultComboBoxModel;
@@ -44,6 +40,10 @@ import java.awt.event.KeyAdapter;
 import java.awt.event.KeyEvent;
 
 public class AccommCatalog extends JDialog {
+	/**
+	 * 
+	 */
+	private static final long serialVersionUID = 1L;
 	private JPanel pnNorth;
 	private JPanel pnCenter;
 	private JPanel pnSouth;
@@ -58,13 +58,13 @@ public class AccommCatalog extends JDialog {
 	private JPanel pnFilters;
 	private JPanel pnLocalisation;
 	private JLabel lblCountry;
-	private JComboBox cbLocalisation;
+	private JComboBox<String> cbLocalisation;
 	private JButton btnBack;
 	private MainWindow mW;
 	private JPanel pnCountry;
 	private JPanel pnThemePark;
 	private JLabel lblThemePark;
-	private JComboBox cbThemePark;
+	private JComboBox<String> cbThemePark;
 	private JDialog aC = this;
 	private JPanel pnType;
 	private JCheckBox chckbxHotel;
@@ -87,6 +87,7 @@ public class AccommCatalog extends JDialog {
 	private JPanel pnApply;
 	private JButton btnApply;
 	private JButton btnHelp;
+	private JButton btnAccept;
 
 	/**
 	 * Create the dialog.
@@ -131,6 +132,7 @@ public class AccommCatalog extends JDialog {
 			pnSouth = new JPanel();
 			FlowLayout flowLayout = (FlowLayout) pnSouth.getLayout();
 			flowLayout.setAlignment(FlowLayout.RIGHT);
+			pnSouth.add(getBtnAccept());
 			pnSouth.add(getBtnBack());
 			pnSouth.add(getBtnHelp());
 		}
@@ -190,14 +192,14 @@ public class AccommCatalog extends JDialog {
 			txtSearch.addKeyListener(new KeyAdapter() {
 				@Override
 				public void keyPressed(KeyEvent arg0) {
-					if(arg0.getKeyCode() == KeyEvent.VK_ENTER) {
-						if(!txtSearch.getText().equals("")) {
+					if (arg0.getKeyCode() == KeyEvent.VK_ENTER) {
+						if (!txtSearch.getText().equals("")) {
 							List<Accommodation> searched = mW.db.searchAcc(txtSearch.getText());
 							String[] columns = { "Name", "Type", "Category", "Park", "capacity", "Price" };
 							accommodationsModel = new NotEditableModel(columns, 0);
 							addRows(searched);
 							table.setModel(accommodationsModel);
-						}else {
+						} else {
 							String[] columns = { "Name", "Type", "Category", "Park", "capacity", "Price" };
 							accommodationsModel = new NotEditableModel(columns, 0);
 							addRows(mW.db.getAccommodations());
@@ -221,17 +223,19 @@ public class AccommCatalog extends JDialog {
 
 	private JTable getTable() {
 		if (table == null) {
-			String[] columns = { "Name", "Type", "Category", "Park", "capacity", "Price" };
+			String[] columns = { "Name", "Type", "Category", "Park", "capacity", "Price", "Code" };
 			accommodationsModel = new NotEditableModel(columns, 0);
 			addRows(mW.db.getAccommodations());
 			table = new JTable(accommodationsModel);
+			hideCodeColumn();
 			table.addMouseListener(new MouseAdapter() {
 				@Override
 				public void mouseClicked(MouseEvent arg0) {
 					if (arg0.getClickCount() == 2) {
-						String name = getSelectedName();
-						if (name != "") {
-							Accommodation accommodation = mW.db.getAccommodationByName(name);
+						String code = getSelectedCode();
+						System.out.println(code);
+						if (code != "") {
+							Accommodation accommodation = mW.db.getAccommodationByCode(code);
 							new AccommodationProcessor(mW, accommodation, false).setVisible(true);
 							;
 						}
@@ -243,6 +247,12 @@ public class AccommCatalog extends JDialog {
 		return table;
 	}
 
+	private void hideCodeColumn() {
+		table.getColumnModel().getColumn(table.getModel().getColumnCount() - 1).setMinWidth(0);
+		table.getColumnModel().getColumn(table.getModel().getColumnCount() - 1).setMaxWidth(0);
+		table.getColumnModel().getColumn(table.getModel().getColumnCount() - 1).setWidth(0);
+	}
+
 	private void addRows(List<Accommodation> accommodations) {
 		for (Accommodation acc : accommodations) {
 			String name = acc.getName();
@@ -251,7 +261,8 @@ public class AccommCatalog extends JDialog {
 			String park = mW.db.getParkByCode(acc.getThemeParkCode()).getName();
 			String capacity = String.valueOf(acc.getCapacity());
 			String price = String.valueOf(acc.getPrice());
-			String[] accData = { name, type, category, park, capacity, price };
+			String code = acc.getCode();
+			String[] accData = { name, type, category, park, capacity, price, code };
 			accommodationsModel.addRow(accData);
 		}
 
@@ -293,14 +304,14 @@ public class AccommCatalog extends JDialog {
 		return lblCountry;
 	}
 
-	private JComboBox getCbLocalisation() {
+	private JComboBox<String> getCbLocalisation() {
 		if (cbLocalisation == null) {
 			modelCountries = new DefaultComboBoxModel<String>();
-			modelCountries.addElement(mW.db.NO_FILTER_KEYWORD);
+			modelCountries.addElement(Database.NO_FILTER_KEYWORD);
 			for (String country : mW.db.getCountries()) {
 				modelCountries.addElement(country);
 			}
-			cbLocalisation = new JComboBox(modelCountries);
+			cbLocalisation = new JComboBox<String>(modelCountries);
 			cbLocalisation.setToolTipText("Select the country.");
 		}
 		return cbLocalisation;
@@ -316,7 +327,6 @@ public class AccommCatalog extends JDialog {
 				}
 			});
 			btnBack.setToolTipText("Return to the shopping cart.");
-			btnBack.setHorizontalAlignment(SwingConstants.RIGHT);
 		}
 		return btnBack;
 	}
@@ -349,14 +359,14 @@ public class AccommCatalog extends JDialog {
 		return lblThemePark;
 	}
 
-	private JComboBox getCbThemePark() {
+	private JComboBox<String> getCbThemePark() {
 		if (cbThemePark == null) {
 			modelParks = new DefaultComboBoxModel<String>();
-			modelParks.addElement(mW.db.NO_FILTER_KEYWORD);
+			modelParks.addElement(Database.NO_FILTER_KEYWORD);
 			for (ThemePark park : mW.db.getParks()) {
 				modelParks.addElement(park.getName());
 			}
-			cbThemePark = new JComboBox(modelParks);
+			cbThemePark = new JComboBox<String>(modelParks);
 			cbThemePark.setToolTipText("Select the thempark.");
 		}
 		return cbThemePark;
@@ -533,10 +543,10 @@ public class AccommCatalog extends JDialog {
 		return spnMax;
 	}
 
-	private String getSelectedName() {
+	private String getSelectedCode() {
 		int row = table.getSelectedRow();
 		if (row != -1) {
-			return (String) table.getValueAt(row, 0);
+			return (String) table.getModel().getValueAt(row, table.getColumnCount() - 1);
 		}
 		return "";
 	}
@@ -551,10 +561,11 @@ public class AccommCatalog extends JDialog {
 		if (chckbxMax.isSelected()) {
 			newList = mW.db.filterAccByPrice(newList, (Integer) spnMax.getValue());
 		}
-		String[] columns = { "Name", "Type", "Category", "Park", "capacity", "Price" };
+		String[] columns = { "Name", "Type", "Category", "Park", "capacity", "Price", "Code" };
 		accommodationsModel = new NotEditableModel(columns, 0);
 		addRows(newList);
 		table.setModel(accommodationsModel);
+		hideCodeColumn();
 	}
 
 	private JPanel getPnApply() {
@@ -579,6 +590,7 @@ public class AccommCatalog extends JDialog {
 		}
 		return btnApply;
 	}
+
 	private JButton getBtnHelp() {
 		if (btnHelp == null) {
 			btnHelp = new JButton("Help");
@@ -586,5 +598,33 @@ public class AccommCatalog extends JDialog {
 			btnHelp.setMnemonic('e');
 		}
 		return btnHelp;
+	}
+
+	private JButton getBtnAccept() {
+		if (btnAccept == null) {
+			btnAccept = new JButton("Accept");
+			btnAccept.setToolTipText("Proceed with the purchase of the selected accommodation.");
+			btnAccept.setMnemonic('A');
+			btnAccept.setEnabled(false);
+			getTable().getSelectionModel().addListSelectionListener(new ListSelectionListener() {
+
+				@Override
+				public void valueChanged(ListSelectionEvent e) {
+					if (table.getSelectedRow() == -1) {
+						btnAccept.setEnabled(false);
+					} else {
+						btnAccept.setEnabled(true);
+					}
+
+				}
+			});
+			btnAccept.addActionListener(new ActionListener() {
+				public void actionPerformed(ActionEvent e) {
+					Accommodation accommodation = mW.db.getAccommodationByCode(getSelectedCode());
+					new AccommodationProcessor(mW, accommodation, false).setVisible(true);
+				}
+			});
+		}
+		return btnAccept;
 	}
 }

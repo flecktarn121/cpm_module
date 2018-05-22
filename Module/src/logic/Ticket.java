@@ -1,6 +1,6 @@
 package logic;
 
-public class Ticket implements Shoppable {
+public class Ticket implements Shoppable, Cloneable {
 
 	private String code;
 	private String parkCode;
@@ -136,6 +136,13 @@ public class Ticket implements Shoppable {
 	public double getFinalPrice() {
 
 		return (adults * getAdultPrice()) + (getChildren() * getChildrenPrice());
+	}
+	
+	@Override
+	public Ticket clone() {
+		Ticket ticket = new Ticket(getCode(), getParkCode(), getAdultPrice(), getChildrenPrice());
+		return ticket;
+		
 	}
 
 }

@@ -5,9 +5,7 @@ import java.awt.BorderLayout;
 import javax.swing.JPanel;
 import javax.swing.JButton;
 import javax.swing.JScrollPane;
-import javax.swing.JTextArea;
 import javax.swing.JLabel;
-import javax.swing.JList;
 import javax.swing.SwingConstants;
 import java.awt.FlowLayout;
 import java.awt.Font;
@@ -15,21 +13,17 @@ import javax.swing.JTextField;
 import javax.swing.ListSelectionModel;
 import javax.swing.JTable;
 import javax.swing.border.TitledBorder;
+import javax.swing.event.ListSelectionEvent;
+import javax.swing.event.ListSelectionListener;
 import javax.swing.table.DefaultTableModel;
-
-import logic.Accommodation;
 import logic.Database;
 import logic.Package;
 import logic.ThemePark;
 import logic.TypeOfAccomodation;
-
 import javax.swing.border.LineBorder;
 import java.awt.Color;
-import java.awt.Dimension;
-
 import javax.swing.JComboBox;
 import java.awt.event.ActionListener;
-import java.sql.Types;
 import java.util.List;
 import java.awt.event.ActionEvent;
 import javax.swing.JCheckBox;
@@ -41,6 +35,10 @@ import java.awt.event.KeyAdapter;
 import java.awt.event.KeyEvent;
 
 public class PackageCatalog extends JDialog {
+	/**
+	 * 
+	 */
+	private static final long serialVersionUID = 1L;
 	private JPanel pnNorth;
 	private JPanel pnCenter;
 	private JPanel pnSouth;
@@ -55,25 +53,26 @@ public class PackageCatalog extends JDialog {
 	private JPanel pnFilters;
 	private JPanel pnLocalisation;
 	private JLabel lblCountry;
-	private JComboBox cbLocalisation;
+	private JComboBox<Object> cbLocalisation;
 	private JButton btnBack;
 	private MainWindow mW;
 	private JPanel pnAccommodation;
 	private JPanel pnType;
 	private JPanel pnBreakfast;
 	private JLabel lblType;
-	private JComboBox cbType;
+	private JComboBox<String> cbType;
 	private JCheckBox chckbxBreakfast;
 	private JDialog pC = this;
 	private JPanel pnPark;
 	private JLabel lblName;
-	private JComboBox cbPark;
+	private JComboBox<String> cbPark;
 	private DefaultTableModel packagesModel;
 	private DefaultComboBoxModel<Object> modelCountries;
 	private DefaultComboBoxModel<String> moldelParks;
 	private JPanel pnApplyFilters;
 	private JButton btnApply;
 	private JButton btnHelp;
+	private JButton btnAccept;
 
 	/**
 	 * Create the dialog.
@@ -90,7 +89,6 @@ public class PackageCatalog extends JDialog {
 		getContentPane().add(getPnEast(), BorderLayout.EAST);
 		mW.getHelpBroker().enableHelpKey(getRootPane(), "pcC", mW.getHelpSet());
 		mW.getHelpBroker().enableHelpOnButton(getBtnHelp(), "pcC", mW.getHelpSet());
-
 
 	}
 
@@ -119,6 +117,7 @@ public class PackageCatalog extends JDialog {
 			pnSouth = new JPanel();
 			FlowLayout flowLayout = (FlowLayout) pnSouth.getLayout();
 			flowLayout.setAlignment(FlowLayout.RIGHT);
+			pnSouth.add(getBtnAccept());
 			pnSouth.add(getBtnBack());
 			pnSouth.add(getBtnHelp());
 		}
@@ -209,15 +208,16 @@ public class PackageCatalog extends JDialog {
 
 	private JTable getTable() {
 		if (table == null) {
-			String[] columns = { "Name", "Park", "Accommodation", "Price Adult", "Price Children" };
+			String[] columns = { "Name", "Park", "Accommodation", "Price Adult", "Price Children", "Code" };
 			packagesModel = new NotEditableModel(columns, 0);
 			addRows(mW.db.getPackages());
 			table = new JTable(packagesModel);
+			hideCodeColumn();
 			table.addMouseListener(new MouseAdapter() {
 				@Override
 				public void mouseClicked(MouseEvent arg0) {
 					if (arg0.getClickCount() == 2) {
-						Package pack = mW.db.getPackByName(getSelectedName());
+						Package pack = mW.db.getPackByCode(getSelectedCode());
 						new PackageProcessor(mW, pack, false).setVisible(true);
 						;
 					}
@@ -228,10 +228,16 @@ public class PackageCatalog extends JDialog {
 		return table;
 	}
 
-	private String getSelectedName() {
+	private void hideCodeColumn() {
+		table.getColumnModel().getColumn(table.getModel().getColumnCount() - 1).setMinWidth(0);
+		table.getColumnModel().getColumn(table.getModel().getColumnCount() - 1).setMaxWidth(0);
+		table.getColumnModel().getColumn(table.getModel().getColumnCount() - 1).setWidth(0);
+	}
+
+	private String getSelectedCode() {
 		int row = table.getSelectedRow();
 		if (row != -1) {
-			return (String) table.getValueAt(row, 0);
+			return (String) table.getValueAt(row, table.getColumnCount() - 1);
 		}
 		return "";
 	}
@@ -243,7 +249,8 @@ public class PackageCatalog extends JDialog {
 			String accommodationName = mW.db.getAccommodationByCode(pack.getAccommodationCode()).getName();
 			String adultPrice = String.valueOf(pack.getAdultPrice());
 			String childrenPrice = String.valueOf(pack.getChildrenPrice());
-			String[] packData = { name, parkName, accommodationName, adultPrice, childrenPrice };
+			String code = pack.getCode();
+			String[] packData = { name, parkName, accommodationName, adultPrice, childrenPrice, code };
 			packagesModel.addRow(packData);
 		}
 
@@ -285,12 +292,12 @@ public class PackageCatalog extends JDialog {
 		return lblCountry;
 	}
 
-	private JComboBox getCbLocalisation() {
+	private JComboBox<Object> getCbLocalisation() {
 		if (cbLocalisation == null) {
-			cbLocalisation = new JComboBox();
+			cbLocalisation = new JComboBox<Object>();
 			cbLocalisation.setToolTipText("Select the country.");
 			modelCountries = new DefaultComboBoxModel<Object>();
-			modelCountries.addElement(mW.db.NO_FILTER_KEYWORD);
+			modelCountries.addElement(Database.NO_FILTER_KEYWORD);
 			for (String country : mW.db.getCountries()) {
 				modelCountries.addElement(country);
 			}
@@ -309,7 +316,6 @@ public class PackageCatalog extends JDialog {
 				}
 			});
 			btnBack.setToolTipText("Return to the shopping cart.");
-			btnBack.setHorizontalAlignment(SwingConstants.RIGHT);
 		}
 		return btnBack;
 	}
@@ -354,7 +360,7 @@ public class PackageCatalog extends JDialog {
 		return lblType;
 	}
 
-	private JComboBox getCbType() {
+	private JComboBox<String> getCbType() {
 		if (cbType == null) {
 			DefaultComboBoxModel<String> model = new DefaultComboBoxModel<String>();
 			model.addElement(Database.NO_FILTER_KEYWORD);
@@ -394,14 +400,14 @@ public class PackageCatalog extends JDialog {
 		return lblName;
 	}
 
-	private JComboBox getCbPark() {
+	private JComboBox<String> getCbPark() {
 		if (cbPark == null) {
 			moldelParks = new DefaultComboBoxModel<String>();
-			moldelParks.addElement(mW.db.NO_FILTER_KEYWORD);
+			moldelParks.addElement(Database.NO_FILTER_KEYWORD);
 			for (ThemePark park : mW.db.getParks()) {
 				moldelParks.addElement(park.getName());
 			}
-			cbPark = new JComboBox();
+			cbPark = new JComboBox<String>();
 			cbPark.setModel(moldelParks);
 
 		}
@@ -418,10 +424,11 @@ public class PackageCatalog extends JDialog {
 			newList = mW.db.filterPacksByBreakfast(newList);
 		}
 
-		String[] columns = { "Name", "Park", "Accommodation", "Price Adult", "Price Children" };
+		String[] columns = { "Name", "Park", "Accommodation", "Price Adult", "Price Children", "Code" };
 		packagesModel = new NotEditableModel(columns, 0);
 		addRows(newList);
 		table.setModel(packagesModel);
+		hideCodeColumn();
 
 	}
 
@@ -447,6 +454,7 @@ public class PackageCatalog extends JDialog {
 		}
 		return btnApply;
 	}
+
 	private JButton getBtnHelp() {
 		if (btnHelp == null) {
 			btnHelp = new JButton("Help");
@@ -454,5 +462,34 @@ public class PackageCatalog extends JDialog {
 			btnHelp.setToolTipText("See the help view");
 		}
 		return btnHelp;
+	}
+
+	private JButton getBtnAccept() {
+		if (btnAccept == null) {
+			btnAccept = new JButton("Accept");
+			btnAccept.setToolTipText("Proceed with the purchase of the selected pack.");
+			btnAccept.setMnemonic('A');
+			btnAccept.setEnabled(false);
+			getTable().getSelectionModel().addListSelectionListener(new ListSelectionListener() {
+
+				@Override
+				public void valueChanged(ListSelectionEvent e) {
+					if (table.getSelectedRow() == -1) {
+						btnAccept.setEnabled(false);
+					} else {
+						btnAccept.setEnabled(true);
+					}
+
+				}
+			});
+
+			btnAccept.addActionListener(new ActionListener() {
+				public void actionPerformed(ActionEvent e) {
+					Package pack = mW.db.getPackByCode(getSelectedCode());
+					new PackageProcessor(mW, pack, false).setVisible(true);
+				}
+			});
+		}
+		return btnAccept;
 	}
 }

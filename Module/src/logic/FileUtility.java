@@ -22,18 +22,12 @@ public class FileUtility {
 		List<String> res = new ArrayList<String>();
 		BufferedReader in = new BufferedReader(new FileReader((inFileName)));
 		try {
+			in.lines().parallel().forEach((line) -> res.add(line));
+		} finally {
 			try {
-				while (in.ready()) {
-					res.add(in.readLine());
-				}
-			} finally {
-				try {
-					in.close();
-				} catch (IOException pepe) {
-				}
+				in.close();
+			} catch (IOException pepe) {
 			}
-		} catch (IOException e) {
-			throw new RuntimeException("There has been a problem reading the file.");
 		}
 		return res;
 	}

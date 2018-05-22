@@ -1,6 +1,6 @@
 package logic;
 
-public class Accommodation implements Shoppable {
+public class Accommodation implements Shoppable, Cloneable {
 
 	private String code;
 	private TypeOfAccomodation type;
@@ -265,5 +265,10 @@ public class Accommodation implements Shoppable {
 		}
 		return finalPrice;
 	}
-
+	
+	@Override
+	public Accommodation clone() {
+		Accommodation acc = new Accommodation(getCode(), getType(), getCategory(), getName(), getThemeParkCode(), getCapacity(), getPrice());
+		return acc;
+	}
 }

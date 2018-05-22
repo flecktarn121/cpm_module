@@ -7,7 +7,6 @@ import javax.swing.JButton;
 import javax.swing.JScrollPane;
 import javax.swing.JTextArea;
 import javax.swing.JLabel;
-import javax.swing.JList;
 import javax.swing.SwingConstants;
 import java.awt.FlowLayout;
 import java.awt.Font;
@@ -17,15 +16,11 @@ import javax.swing.SpinnerNumberModel;
 import javax.swing.JTable;
 import javax.swing.border.TitledBorder;
 import javax.swing.table.DefaultTableModel;
-import javax.swing.table.TableModel;
-
-import logic.Accommodation;
+import logic.Database;
 import logic.ThemePark;
-
 import javax.swing.border.LineBorder;
 import java.awt.Color;
 import java.awt.Dimension;
-
 import javax.swing.JComboBox;
 import java.awt.event.ActionListener;
 import java.awt.event.ActionEvent;
@@ -35,6 +30,8 @@ import javax.swing.JCheckBox;
 import javax.swing.JSlider;
 import javax.swing.JSpinner;
 import javax.swing.event.ChangeListener;
+import javax.swing.event.ListSelectionEvent;
+import javax.swing.event.ListSelectionListener;
 import javax.swing.event.ChangeEvent;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
@@ -43,6 +40,10 @@ import java.awt.event.KeyAdapter;
 import java.awt.event.KeyEvent;
 
 public class ParkCatalog extends JDialog {
+	/**
+	 * 
+	 */
+	private static final long serialVersionUID = 1L;
 	private JPanel pnNorth;
 	private JPanel pnCenter;
 	private JPanel pnSouth;
@@ -57,15 +58,13 @@ public class ParkCatalog extends JDialog {
 	private JPanel pnFilters;
 	private JPanel pnLocalisation;
 	private JLabel lblCountry;
-	private JComboBox cbLocalisation;
+	private JComboBox<Object> cbLocalisation;
 	private JButton btnBack;
 	private MainWindow mW;
-	private DefaultTableModel tableModel;
-	private JList visitList;
 	private JPanel pnCountry;
 	private JPanel pnCity;
 	private JLabel lblCity;
-	private JComboBox cbCity;
+	private JComboBox<Object> cbCity;
 	private JPanel pnPrice;
 	private JPanel pnMax;
 	private JCheckBox chckbxMax;
@@ -81,6 +80,7 @@ public class ParkCatalog extends JDialog {
 	private JButton btnApply;
 	private DefaultTableModel catalogModel;
 	private JButton btnHelp;
+	private JButton btnAccept;
 
 	/**
 	 * Create the dialog.
@@ -126,6 +126,7 @@ public class ParkCatalog extends JDialog {
 			pnSouth = new JPanel();
 			FlowLayout flowLayout = (FlowLayout) pnSouth.getLayout();
 			flowLayout.setAlignment(FlowLayout.RIGHT);
+			pnSouth.add(getBtnAccept());
 			pnSouth.add(getBtnBack());
 			pnSouth.add(getBtnHelp());
 		}
@@ -215,17 +216,19 @@ public class ParkCatalog extends JDialog {
 	private JTable getTable() {
 		if (table == null) {
 			table = new JTable();
-			String[] columns = { "Name", "Country", "City", "Adult Price", "Children Price" };
+			String[] columns = { "Name", "Country", "City", "Adult Price", "Children Price", "Code" };
 			catalogModel = new NotEditableModel(columns, 0);
 			addRows(mW.db.getParks());
 			table.setModel(catalogModel);
+			hideCodeColumn(); // hide the code
 			table.addMouseListener(new MouseAdapter() {
 				@Override
 				public void mouseClicked(MouseEvent arg0) {
 					if (arg0.getClickCount() == 2) {
-						String name = getSelectedName();
-						if (name != "") {
-							ThemePark park = mW.db.getParkByName(name);
+						String code = getSelectedCode();
+						if (code != "") {
+							System.out.println(code);
+							ThemePark park = mW.db.getParkByCode(code);
 							new ParkProcessor(mW, park, false).setVisible(true);
 
 						}
@@ -237,10 +240,16 @@ public class ParkCatalog extends JDialog {
 		return table;
 	}
 
-	private String getSelectedName() {
+	private void hideCodeColumn() {
+		table.getColumnModel().getColumn(table.getModel().getColumnCount() - 1).setMinWidth(0);
+		table.getColumnModel().getColumn(table.getModel().getColumnCount() - 1).setMaxWidth(0);
+		table.getColumnModel().getColumn(table.getModel().getColumnCount() - 1).setWidth(0);
+	}
+
+	private String getSelectedCode() {
 		int row = table.getSelectedRow();
 		if (row != -1) {
-			return (String) table.getValueAt(row, 0);
+			return (String) table.getValueAt(row, table.getColumnCount() - 1);
 		}
 		return "";
 	}
@@ -252,7 +261,8 @@ public class ParkCatalog extends JDialog {
 			String city = park.getCity();
 			String priceAdult = String.valueOf(mW.db.getTicketByCode(park.getCode()).getAdultPrice());
 			String priceChildren = String.valueOf(mW.db.getTicketByCode(park.getCode()).getChildrenPrice());
-			String[] parkData = { name, country, city, priceAdult, priceChildren };
+			String code = park.getCode();
+			String[] parkData = { name, country, city, priceAdult, priceChildren, code };
 			catalogModel.addRow(parkData);
 		}
 
@@ -292,12 +302,12 @@ public class ParkCatalog extends JDialog {
 		return lblCountry;
 	}
 
-	private JComboBox getCbLocalisation() {
+	private JComboBox<Object> getCbLocalisation() {
 		if (cbLocalisation == null) {
-			cbLocalisation = new JComboBox();
+			cbLocalisation = new JComboBox<Object>();
 			cbLocalisation.setToolTipText("Select the country.");
 			modelCountries = new DefaultComboBoxModel<Object>();
-			modelCountries.addElement(mW.db.NO_FILTER_KEYWORD);
+			modelCountries.addElement(Database.NO_FILTER_KEYWORD);
 			for (String country : mW.db.getCountries()) {
 				modelCountries.addElement(country);
 			}
@@ -316,7 +326,6 @@ public class ParkCatalog extends JDialog {
 				}
 			});
 			btnBack.setToolTipText("Return to the shopping cart.");
-			btnBack.setHorizontalAlignment(SwingConstants.RIGHT);
 		}
 		return btnBack;
 	}
@@ -350,15 +359,15 @@ public class ParkCatalog extends JDialog {
 		return lblCity;
 	}
 
-	private JComboBox getCbCity() {
+	private JComboBox<Object> getCbCity() {
 		if (cbCity == null) {
 			modelCities = new DefaultComboBoxModel<Object>();
-			modelCities.addElement(mW.db.NO_FILTER_KEYWORD);
+			modelCities.addElement(Database.NO_FILTER_KEYWORD);
 			for (ThemePark park : mW.db.getParks()) {
 				modelCities.addElement(park.getCity());
 			}
-			cbCity = new JComboBox();
-			modelCities.addElement(mW.db.NO_FILTER_KEYWORD);
+			cbCity = new JComboBox<Object>();
+			modelCities.addElement(Database.NO_FILTER_KEYWORD);
 			cbCity.setModel(modelCities);
 		}
 		return cbCity;
@@ -494,10 +503,11 @@ public class ParkCatalog extends JDialog {
 		if (chckbxMax.isSelected()) {
 			newList = mW.db.filterParkByPrice(newList, (Integer) spnMax.getValue());
 		}
-		String[] columns = { "Name", "Country", "City", "Adult Price", "Children Price" };
+		String[] columns = { "Name", "Country", "City", "Adult Price", "Children Price", "Code" };
 		catalogModel = new NotEditableModel(columns, 0);
 		addRows(newList);
 		table.setModel(catalogModel);
+		hideCodeColumn();
 	}
 
 	private JButton getBtnHelp() {
@@ -507,5 +517,33 @@ public class ParkCatalog extends JDialog {
 			btnHelp.setMnemonic('e');
 		}
 		return btnHelp;
+	}
+
+	private JButton getBtnAccept() {
+		if (btnAccept == null) {
+			btnAccept = new JButton("Accept");
+			btnAccept.setToolTipText("Proceed with the purchase of the selected park.");
+			btnAccept.setMnemonic('A');
+			btnAccept.setEnabled(false);
+			getTable().getSelectionModel().addListSelectionListener(new ListSelectionListener() {
+
+				@Override
+				public void valueChanged(ListSelectionEvent e) {
+					if (table.getSelectedRow() == -1) {
+						btnAccept.setEnabled(false);
+					} else {
+						btnAccept.setEnabled(true);
+					}
+
+				}
+			});
+			btnAccept.addActionListener(new ActionListener() {
+				public void actionPerformed(ActionEvent e) {
+					ThemePark park = mW.db.getParkByCode(getSelectedCode());
+					new ParkProcessor(mW, park, false).setVisible(true);
+				}
+			});
+		}
+		return btnAccept;
 	}
 }
