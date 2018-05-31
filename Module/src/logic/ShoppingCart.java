@@ -49,6 +49,11 @@ public class ShoppingCart {
 		if (nights <= 0) {
 			throw new WrongInputException("The client must stay at least one night.");
 		}
+		if(accomodation.getType().equals(TypeOfAccomodation.APARTHOTEL) || accomodation.getType().equals(TypeOfAccomodation.APARTMENT)) {
+			if((numberOfAdults+numberOfChildren) > accomodation.getCapacity()) {
+				throw new WrongInputException("The number of people selected should not exceed the capacity of the accommodation.");
+			}
+		}
 		if (cartContainsShoppingName(accomodation.getName())) {
 			accomodation.setNumberOfAdults(numberOfAdults);
 			accomodation.setNumberOfChildren(numberOfChildren);
