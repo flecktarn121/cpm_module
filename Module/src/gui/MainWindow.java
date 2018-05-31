@@ -7,11 +7,13 @@ import java.awt.EventQueue;
 import java.awt.FlowLayout;
 import java.awt.Font;
 import java.awt.Image;
+import java.awt.Toolkit;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.io.File;
 import java.io.FileNotFoundException;
 import java.net.URL;
+import java.sql.Date;
 
 import javax.help.HelpBroker;
 import javax.help.HelpSet;
@@ -22,9 +24,13 @@ import javax.swing.JDialog;
 import javax.swing.JFrame;
 import javax.swing.JLabel;
 import javax.swing.JList;
+import javax.swing.JMenu;
+import javax.swing.JMenuBar;
+import javax.swing.JMenuItem;
 import javax.swing.JOptionPane;
 import javax.swing.JPanel;
 import javax.swing.JScrollPane;
+import javax.swing.JSeparator;
 import javax.swing.JTextArea;
 import javax.swing.JTextField;
 import javax.swing.border.EmptyBorder;
@@ -43,11 +49,6 @@ import logic.ShoppingCart;
 import logic.ThemePark;
 import logic.Ticket;
 import logic.WrongInputException;
-import javax.swing.JMenuBar;
-import javax.swing.JMenu;
-import javax.swing.JMenuItem;
-import javax.swing.JSeparator;
-import java.awt.Toolkit;
 
 public class MainWindow extends JFrame {
 
@@ -362,6 +363,7 @@ public class MainWindow extends JFrame {
 			btnAccept.addActionListener(new ActionListener() {
 				public void actionPerformed(ActionEvent e) {
 					((CardLayout) pnMain.getLayout()).show(pnMain, "pnConfirmation");
+					String title = getTxtNIF().getText() + new Date(System.currentTimeMillis()).toString();
 					db.save("bill.txt", getTxtBill().getText());
 				}
 			});
